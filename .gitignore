@@ -1,0 +1,14 @@
+__pycache__/
+*.pyc
+.DS_Store
+out.mp4
+out.webm
+
+# 큰 자료는 커밋하지 않는다. 설치 스크립트(fetch_model.py)가 받아 온다.
+web/models/
+web/sample/*
+!web/sample/README.md
+*.task
+
+# 라즈베리파이 설정은 기계마다 다르다
+pi.env

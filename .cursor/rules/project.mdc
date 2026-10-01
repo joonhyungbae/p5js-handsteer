@@ -1,0 +1,12 @@
+---
+description: p5js-handsteer 에서 일할 때의 규칙
+alwaysApply: true
+---
+
+작업 규칙은 저장소 루트의 AGENTS.md 에 있다. 무엇을 고치기 전에 그 파일을 읽는다.
+
+- 숫자는 web/settings.js 에만 둔다.
+- 인터넷 없이 떠야 한다. CDN 을 넣지 않는다(p5.js·MediaPipe 는 web/vendor 에 있다).
+- 카메라가 없어도 --sim 으로 돌아가야 한다.
+- 작가가 고치는 자리는 web/steer.js 와 web/sketch.js 다. 단순하게 둔다.
+- 주석과 문서는 한국어로 쓴다.
