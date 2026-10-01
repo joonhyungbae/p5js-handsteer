@@ -15,6 +15,9 @@
    FRAG 의 색 세 줄     바닥색 · 중간색 · 꼭대기색. 불·물·밤하늘로 바꿔 보라
    settings.js 의 조절판 거칠기 · 흐르는 속도 · 색 치우침은 코드를 고치지 않고 바꾼다
 
+ 관객이 보낸 문장은 셰이더 위에 2D 한 겹으로 올린다. 글자를 그리는 일은 words.js 가 맡고
+ 여기서는 그 그림판을 겹쳐 주기만 한다. 한 그림판에 모아 두어야 녹화와 사진에도 같이 담긴다.
+
  셰이더가 안 되는 기계도 있다. 그때는 저절로 단순한 그림으로 내려간다(drawFlat).
 */
 
@@ -25,8 +28,9 @@ attribute vec2 aTexCoord;
 varying vec2 vUv;
 void main() {
   vUv = aTexCoord;
-  // p5 가 주는 좌표를 화면 가득 채우는 사각형으로 편다
-  vec4 pos = vec4(aPosition * 2.0 - 1.0, 1.0);
+  // p5 가 주는 좌표를 화면 가득 채우는 사각형으로 편다.
+  // z 를 거의 맨 뒤(0.999)로 두어야 그 위에 글자를 겹칠 수 있다. 0 으로 두면 물결이 맨 앞에 선다.
+  vec4 pos = vec4(aPosition.xy * 2.0 - 1.0, 0.999, 1.0);
   pos.y = -pos.y;
   gl_Position = pos;
 }`;
@@ -133,11 +137,12 @@ void main() {
   gl_FragColor = vec4(col, 1.0);
 }`;
 
-export function startSketch(parent, getState, getParams) {
+export function startSketch(parent, getState, getParams, words = null) {
   return new p5((sk) => {
     let shader = null;
     let flat = false;       // 셰이더가 안 되면 단순한 그림으로 내려간다
     let flow = 0;
+    let layer = null;       // 문장을 그리는 2D 그림판
 
     sk.setup = () => {
       const c = sk.createCanvas(parent.clientWidth, parent.clientHeight, sk.WEBGL);
@@ -150,16 +155,34 @@ export function startSketch(parent, getState, getParams) {
       } catch (e) {
         flat = true;
       }
+      if (words) layer = sk.createGraphics(sk.width, sk.height);
     };
 
-    sk.windowResized = () => sk.resizeCanvas(parent.clientWidth, parent.clientHeight);
+    sk.windowResized = () => {
+      sk.resizeCanvas(parent.clientWidth, parent.clientHeight);
+      layer?.resizeCanvas(sk.width, sk.height);
+    };
+
+    // 관객이 보낸 문장을 셰이더 위에 겹친다
+    const overlay = (s, p) => {
+      if (!layer) return;
+      words.drawTo(layer.drawingContext, layer.width, layer.height, s, p);
+      sk.push();
+      sk.resetShader();       // 셰이더를 쓰던 채로 그리면 겹쳐지지 않는다
+      sk.image(layer, -sk.width / 2, -sk.height / 2, sk.width, sk.height);
+      sk.pop();
+    };
 
     sk.draw = () => {
       const s = getState() || { steer: 0, throttle: 0, ready: 0, motion: 0 };
       const p = getParams();
       flow += (sk.deltaTime / 1000) * (0.4 + s.throttle * 2.2);
 
-      if (!shader || flat) return drawFlat(sk, s, p, flow);
+      if (!shader || flat) {
+        drawFlat(sk, s, p, flow);
+        overlay(s, p);
+        return;
+      }
 
       try {
         sk.shader(shader);
@@ -178,6 +201,7 @@ export function startSketch(parent, getState, getParams) {
         flat = true;        // 한 번 실패하면 그만두고 단순한 그림으로
       }
 
+      overlay(s, p);
     };
   });
 }

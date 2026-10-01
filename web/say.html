@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>한 문장 보내기</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='6' fill='%238fe3d2'/%3E%3C/svg%3E" />
+<style>
+  :root { color-scheme: dark; --bg:#0f1514; --fg:#ecebe6; --dim:#9aa6a3; --line:#2b3331; --mark:#8fe3d2; }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body { margin:0; background:var(--bg); color:var(--fg); display:flex; align-items:center; justify-content:center;
+         padding: calc(16px + env(safe-area-inset-top, 0px)) 16px calc(16px + env(safe-area-inset-bottom, 0px));
+         font-family: system-ui, -apple-system, "Pretendard", sans-serif; font-size:16px; line-height:1.5; }
+  main { width:100%; max-width:420px; }
+  h1 { font-size:19px; margin:0 0 6px; font-weight:600; }
+  p.lead { color:var(--dim); margin:0 0 18px; font-size:14.5px; }
+  textarea { width:100%; min-height:110px; resize:none; font:inherit; color:var(--fg); background:#161e1d;
+             border:1px solid var(--line); border-radius:12px; padding:12px 14px; }
+  textarea:focus { outline:2px solid var(--mark); outline-offset:1px; }
+  .row { display:flex; align-items:center; gap:12px; margin-top:12px; }
+  button { flex:1; font:inherit; font-weight:600; padding:14px 18px; border-radius:999px; border:0;
+           background:var(--mark); color:#0f1514; cursor:pointer; }
+  button:disabled { opacity:.5; cursor:default; }
+  .count { color:var(--dim); font-size:13px; font-variant-numeric:tabular-nums; white-space:nowrap; }
+  #said { margin-top:18px; color:var(--dim); font-size:14px; min-height:1.5em; }
+  #said b { color:var(--fg); font-weight:500; }
+  ul { list-style:none; margin:10px 0 0; padding:0; }
+  li { border-top:1px solid var(--line); padding:8px 0; color:var(--dim); font-size:14px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>지금 불안한 것을 한 문장으로</h1>
+  <p class="lead">적어서 보내면 전시장 화면 위로 떠오릅니다. 이름은 적히지 않습니다.</p>
+  <form id="form">
+    <textarea id="text" maxlength="60" enterkeyhint="send" placeholder="예: 내일 아침에 늦잠 잘까 봐"></textarea>
+    <div class="row">
+      <button id="send" type="submit">보내기</button>
+      <span class="count" id="left">60</span>
+    </div>
+  </form>
+  <div id="said"></div>
+  <ul id="mine"></ul>
+</main>
+<script type="module" src="say.js"></script>
+</body>
+</html>

@@ -30,6 +30,10 @@ export const PARAMS = [
   { key: "grain", label: "결의 거칠기", min: 0, max: 1, step: 0.02, value: 0.35 },
   // 색 치우침. 0 이면 물빛, 1 이면 불빛
   { key: "warm", label: "색 (물 ↔ 불)", min: 0, max: 1, step: 0.02, value: 0.35 },
+  // 관객이 보낸 문장을 화면에 띄울지. 끄면 색면만 남는다
+  { key: "words", label: "문장 띄우기", type: "check", value: true },
+  // 문장 글자 크기. 화면 높이에 대한 비율이라 큰 화면에서도 같은 크기로 보인다
+  { key: "wordSize", label: "문장 크기", min: 0.02, max: 0.12, step: 0.005, value: 0.05 },
   { key: "mirror", label: "좌우 뒤집기", type: "check", value: true },
 ];
 
@@ -38,3 +42,15 @@ export const INPUT_WIDTH = 320;   // 사람을 찾는 그림의 가로. 느린 �
 export const MAX_PEOPLE = 1;      // 조작하는 사람은 한 명이다. 줄에 선 사람까지 잡을 필요가 없다
 export const GRID_W = 128;        // 실루엣 격자. 이 예제에서는 미리보기에만 쓴다
 export const GRID_H = 96;
+
+// ─── 관객이 보낸 문장 ────────────────────────────────────────────────────
+// 폰에서 적은 문장을 받아 화면에 띄운다. 받는 자리는 serve.py 의 /say 다.
+export const WORDS = {
+  keep: 200,        // 서버가 모아 둔 것 중 이 화면이 들고 있는 개수
+  floats: 6,        // 한 번에 떠 있는 문장 수. 많으면 읽히지 않는다
+  lanes: 5,         // 올라오는 길의 수. 같은 자리에 겹치지 않게 돌려 쓴다
+  every: 2.2,       // 몇 초마다 한 문장을 새로 올리나
+  life: 18,         // 한 문장이 바닥에서 위까지 가는 데 걸리는 시간(초)
+  poll: 1.0,        // 서버에 새 문장이 있는지 묻는 주기(초)
+  maxChars: 60,     // 이보다 긴 문장은 잘라서 한 줄로 띄운다
+};

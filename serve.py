@@ -6,11 +6,15 @@
   OSC            유니티·터치디자이너·에이블톤이 받는다 (--osc 로 주소를 바꾼다)
   /steer.json    OSC 를 안 쓰는 프로그램이 읽어 간다
 
+관객의 폰에서 적은 문장도 여기로 들어온다. /say 로 받아 두었다가 /says.json 으로 내준다.
+폰에서 열 주소는 켤 때 화면에 적힌다. --host 0.0.0.0 으로 켜야 같은 공유기의 폰이 들어온다.
+
   python3 serve.py                 카메라로 켠다
   python3 serve.py --sim           카메라 없이 가짜 사람으로
   python3 serve.py --video sample/팔벌려뛰기.webm   영상 파일로
   python3 serve.py --offline 10    10초 동안의 색면을 out.mp4(또는 out.webm)로 적고 끝낸다
   python3 serve.py --host 0.0.0.0  폰이나 다른 컴퓨터에서 본다 (카메라는 이 컴퓨터에서만 열린다)
+  python3 serve.py --say off       문장 받기를 끈다
   python3 serve.py --port 7001     포트를 바꾼다. 쓰이고 있으면 다음 빈 번호를 찾는다
 
 파이썬에 들어 있는 것만 쓴다. 따로 설치할 것이 없다.
@@ -25,15 +29,34 @@ import functools
 import json
 import http.server
 import platform
+import socket
 import subprocess
 import sys
 import threading
+import time
 import webbrowser
 from pathlib import Path
 from urllib.parse import parse_qs, quote, urlparse
 
 HERE = Path(__file__).parent
 WEB = HERE / "web"
+
+MAX_CHARS = 60      # 한 문장의 길이. 길면 화면에서 한 줄로 읽히지 않는다
+MAX_SAYS = 500      # 들고 있을 문장 수. 넘으면 오래된 것부터 버린다
+MIN_GAP = 0.7       # 한 기기가 이보다 빨리 거듭 보내면 흘린다
+
+
+def lan_url(port: int) -> str:
+    """같은 공유기의 폰이 열 주소. 바깥으로 보내지 않고 내 주소만 알아낸다."""
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        s.connect(("10.255.255.255", 1))
+        ip = s.getsockname()[0]
+    except OSError:
+        ip = "127.0.0.1"
+    finally:
+        s.close()
+    return f"http://{ip}:{port}/say"
 
 
 class Handler(http.server.SimpleHTTPRequestHandler):
@@ -47,21 +70,44 @@ class Handler(http.server.SimpleHTTPRequestHandler):
     on_saved = None   # --offline 일 때 파일을 받으면 부른다
     latest = {}       # 브라우저가 마지막으로 보낸 조작값
     osc = None        # python-osc 가 있으면 여기로 보낸다
+    says = []         # 관객이 보낸 문장 [{"id", "text", "t"}]
+    says_on = True    # --say off 면 받지 않는다
+    phone = ""        # 폰에서 열 주소. 켤 때 정한다
+    last_say = {}     # 기기마다 마지막으로 보낸 시각. 너무 잦으면 흘린다
+    lock = threading.Lock()
 
     def end_headers(self) -> None:
         self.send_header("Cache-Control", "no-store")
         super().end_headers()
 
+    def send_json(self, data: dict) -> None:
+        body = json.dumps(data, ensure_ascii=False).encode()
+        self.send_response(200)
+        self.send_header("Content-Type", "application/json; charset=utf-8")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
     def do_GET(self) -> None:
+        url = urlparse(self.path)
         # 다른 프로그램이 조작값을 읽어 가는 자리
-        if urlparse(self.path).path == "/steer.json":
-            body = json.dumps(Handler.latest).encode()
-            self.send_response(200)
-            self.send_header("Content-Type", "application/json")
-            self.send_header("Content-Length", str(len(body)))
-            self.end_headers()
-            self.wfile.write(body)
+        if url.path == "/steer.json":
+            self.send_json(Handler.latest)
             return
+        # 화면이 새 문장을 받아 가는 자리. since 뒤의 것만 준다
+        if url.path == "/says.json":
+            try:
+                since = int(parse_qs(url.query).get("since", ["0"])[0])
+            except ValueError:
+                since = 0
+            with Handler.lock:
+                items = [s for s in Handler.says if s["id"] > since]
+                count = len(Handler.says)
+            self.send_json({"phone": Handler.phone, "count": count, "items": items})
+            return
+        # 폰에서 여는 주소. /say 로 치면 파일 이름 없이도 열리게 한다
+        if url.path == "/say":
+            self.path = "/say.html"
         super().do_GET()
 
     def do_POST(self) -> None:
@@ -81,6 +127,35 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                         Handler.osc.send_message(f"/steer/{key}", float(Handler.latest[key]))
             self.send_response(204)
             self.end_headers()
+            return
+
+        # 관객의 폰에서 온 문장
+        if url.path == "/say":
+            if not Handler.says_on:
+                self.send_error(403, "say off")
+                return
+            body = self.rfile.read(int(self.headers.get("Content-Length", 0)))
+            try:
+                text = json.loads(body).get("text", "")
+            except ValueError:
+                self.send_error(400)
+                return
+            text = " ".join(str(text).split())[:MAX_CHARS]
+            who = self.client_address[0]
+            now = time.time()
+            with Handler.lock:
+                if not text or now - Handler.last_say.get(who, 0) < MIN_GAP:
+                    self.send_json({"ok": False})
+                    return
+                Handler.last_say[who] = now
+                item = {"id": (Handler.says[-1]["id"] + 1) if Handler.says else 1, "text": text, "t": int(now)}
+                Handler.says.append(item)
+                del Handler.says[:-MAX_SAYS]
+                count = len(Handler.says)
+            if Handler.osc:
+                Handler.osc.send_message("/say", text)
+            print(f"문장 {count}: {text}")
+            self.send_json({"ok": True, "count": count})
             return
 
         # --offline 녹화만 받는다. 이 컴퓨터에서 온 것만.
@@ -135,6 +210,7 @@ def main() -> None:
     ap.add_argument("--query", default="", help="주소 뒤에 그대로 붙일 것. 예: cam=USB&in=256")
     ap.add_argument("--osc", default="127.0.0.1:7400",
                     help="조작값을 OSC 로 보낼 곳. 끄려면 --osc off")
+    ap.add_argument("--say", default="on", help="관객의 폰에서 문장을 받는다. 끄려면 --say off")
     args = ap.parse_args()
 
     q = []
@@ -160,8 +236,11 @@ def main() -> None:
         except Exception as exc:
             print(f"OSC 를 켜지 못했습니다({exc}). /steer.json 으로는 그대로 받을 수 있습니다.")
 
+    Handler.says_on = args.say != "off"
+
     server = bind(args.host, args.port)
     port = server.server_address[1]
+    Handler.phone = lan_url(port)
     url = f"http://127.0.0.1:{port}/" + ("?" + "&".join(q) if q else "")
 
     if not (WEB / "models" / "pose_landmarker_lite.task").exists() and not (args.sim or args.offline):
@@ -176,6 +255,10 @@ def main() -> None:
         print(f"열렸습니다: {url}")
         if args.host == "0.0.0.0":
             print(f"다른 기기에서는 이 컴퓨터의 주소로 엽니다(포트 {port}). 카메라는 https 가 아니라서 열리지 않습니다.")
+            if Handler.says_on:
+                print(f"관객이 문장을 적는 폰 주소: {Handler.phone}")
+        elif Handler.says_on:
+            print("폰에서 문장을 받으려면 --host 0.0.0.0 으로 켭니다. 지금은 이 컴퓨터에서만 적을 수 있습니다.")
         print("끝내려면 Ctrl+C (창을 닫아도 됩니다)")
     if not args.no_open:
         threading.Timer(0.8, open_browser, [url]).start()

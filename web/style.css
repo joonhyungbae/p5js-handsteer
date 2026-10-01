@@ -56,3 +56,12 @@
 .meter.out i { background: rgba(140, 230, 210, 0.18); }
 .meter.out b { background: #8fe3d2; }
 .hint { color: #8a9a97; font-size: 11px; margin-top: 6px; }
+
+/* 관객이 보낸 문장 */
+#sayform { display:flex; gap:8px; }
+#sayform input { flex:1; min-width:0; font:inherit; padding:6px 10px; border-radius:8px;
+                 border:1px solid var(--line); background:var(--card); color:var(--fg); }
+#sayform button { padding:6px 12px; }
+#saylist { list-style:none; margin:10px 0 0; padding:0; max-height:132px; overflow-y:auto; }
+#saylist li { border-top:1px solid var(--line); padding:6px 0; font-size:12.5px; color:var(--dim); }
+#saylist li:first-child { color:var(--fg); }

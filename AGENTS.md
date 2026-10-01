@@ -13,6 +13,8 @@ Cursor, Claude Code, Codex 등 어떤 도구로 들어왔든 이 파일을 먼�
 웹캠 → sense.js → features.js → steer.js ┬→ sketch.js (p5.js 그림)
                                           ├→ sound.js (브라우저 소리)
                                           └→ serve.py → OSC · /steer.json (선택)
+
+관객 폰 → say.html → serve.py /say → /says.json → words.js → sketch.js 위에 겹침
 ```
 
 ## 먼저 돌려 보기
@@ -36,7 +38,9 @@ Cursor, Claude Code, Codex 등 어떤 도구로 들어왔든 이 파일을 먼�
 | `web/steer.js` | 손의 숫자 → 조작값 | **작가가 고치는 자리.** 단순하게 둔다 |
 | `web/sketch.js` | p5.js 그림 | **작가가 고치는 자리.** 감지도 소리도 여기서 하지 않는다 |
 | `web/sound.js` | 조작값 → 소리 | 사람이 단추를 눌러야 시작한다 |
-| `serve.py` | 파일 내주기, 조작값 받기, OSC·JSON 내보내기 | 외부 의존을 늘리지 않는다 |
+| `web/words.js` | 관객이 보낸 문장을 모아 띄운다 | 관객이 적은 글이다. 넣을 때 textContent 로 다룬다 |
+| `web/say.html` · `web/say.js` | 폰에서 적는 화면 | 폰 한 화면에 들어오게 둔다 |
+| `serve.py` | 파일 내주기, 조작값·문장 받기, OSC·JSON 내보내기 | 외부 의존을 늘리지 않는다 |
 
 ## 깨뜨리면 안 되는 것
 
@@ -53,6 +57,9 @@ Cursor, Claude Code, Codex 등 어떤 도구로 들어왔든 이 파일을 먼�
 - `serve.py` 는 `Cache-Control: no-store` 를 보낸다. 고친 파일이 바로 보이게 하려는 것이다.
 - 손이 화면 밖으로 나가면 관절의 믿음값이 떨어진다. `features.js` 는 한 손만 보여도 돌아간다.
 - 같은 포트를 두 번 쓰면 `serve.py` 가 다음 빈 번호를 찾는다. 주소에 찍히는 번호를 보고 연다.
+- WEBGL 에서 셰이더 위에 무엇을 겹치려면 셰이더의 z 를 뒤로 밀어야 한다. `sketch.js` 의 VERT 가
+  `0.999` 를 쓰는 이유다. `0` 으로 두면 물결이 맨 앞에 서서 글자가 묻힌다.
+- 관객이 보낸 문장은 켜 있는 동안만 메모리에 있다. 파일로 적지 않는다. 남기려면 적는 자리를 따로 만든다.
 
 ## 비슷한 예제를 새로 만들 때
 

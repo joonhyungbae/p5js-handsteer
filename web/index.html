@@ -49,6 +49,16 @@
     </div>
 
     <div class="card">
+      <h2>관객이 보낸 문장</h2>
+      <form id="sayform">
+        <input id="saytext" maxlength="60" placeholder="여기서도 한 문장 적어 봅니다" />
+        <button type="submit">올리기</button>
+      </form>
+      <ul id="saylist"></ul>
+      <div class="hint" id="sayhint">폰에서 적으려면 ./start.sh --host 0.0.0.0 으로 켭니다</div>
+    </div>
+
+    <div class="card">
       <h2>조절</h2>
       <div id="params"></div>
       <button id="reset" style="margin-top:6px">처음 값으로</button>

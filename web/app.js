@@ -10,6 +10,9 @@
    ?gpu          GPU 로 감지한다 (기본은 CPU)
    ?offline=10   10초를 녹화해 서버에 보내고 끝낸다 (./start.sh --offline 10 이 쓴다)
 
+ 관객이 폰에서 적은 문장은 serve.py 가 받아 두고, 이 화면이 1초에 한 번 받아 간다.
+ 폰에서 열 주소는 서버를 켤 때 화면에 적힌다.
+
  그림과 소리는 이 브라우저 안에서 난다. 다른 프로그램이 필요 없다.
  조작값을 밖으로 넘기고 싶을 때만 serve.py 가 OSC 와 /steer.json 으로 내보낸다.
 */
@@ -19,6 +22,7 @@ import { Features } from "./features.js";
 import { steer } from "./steer.js";
 import { startSketch } from "./sketch.js";
 import { Sound } from "./sound.js";
+import { Words } from "./words.js";
 import { PARAMS } from "./settings.js";
 
 const $ = (id) => document.getElementById(id);
@@ -162,6 +166,29 @@ async function send(values) {
   }
 }
 
+/* ---------- 관객이 보낸 문장 ---------- */
+
+function showSays() {
+  const box = $("saylist");
+  box.textContent = "";
+  // 관객이 적은 글이라 textContent 로 넣는다. 태그가 섞여 들어와도 글자로만 보인다.
+  for (const w of words.pool.slice(-6).reverse()) {
+    box.append(Object.assign(document.createElement("li"), { textContent: w.text }));
+  }
+  const where = words.phone
+    ? `폰에서 적는 주소: ${words.phone}`
+    : "폰에서 적으려면 ./start.sh --host 0.0.0.0 으로 켭니다";
+  $("sayhint").textContent = `${words.pool.length} 문장 · ${where}`;
+}
+
+$("sayform").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const input = $("saytext");
+  if (!(await words.say(input.value))) return;
+  input.value = "";
+  showSays();
+});
+
 /* ---------- 소리 ---------- */
 
 const sound = new Sound();
@@ -247,12 +274,14 @@ document.addEventListener("visibilitychange", () => document.visibilityState ===
 /* ---------- 한 프레임 ---------- */
 
 const features = new Features();
+const words = new Words();
 // 그림은 p5 가 그린다. 조작값과 조절판만 넘겨 주고, 그리는 일은 sketch.js 가 맡는다.
-startSketch($("stage"), () => state, () => p);
+startSketch($("stage"), () => state, () => p, words);
 const prev = $("preview");
 const pctx = prev.getContext("2d");
 let state = null;
 let smooth = null;
+let shownSays = -1;
 let last = performance.now();
 
 function drawPreview(frame) {
@@ -322,6 +351,7 @@ function loop(now) {
         $(`sv-${key}`).textContent = v.toFixed(2);
       }
       $("fps").textContent = `${Math.round(sense.fps)} fps${sendNote ? ` · ${sendNote}` : ""}`;
+      if (words.pool.length !== shownSays) { shownSays = words.pool.length; showSays(); }
     }
   }
   requestAnimationFrame(loop);
@@ -366,4 +396,4 @@ if (offline > 0) {
   }, 1500);
 }
 
-window.handsteer = { p, get state() { return state; }, get features() { return smooth; } };
+window.handsteer = { p, words, get state() { return state; }, get features() { return smooth; } };
