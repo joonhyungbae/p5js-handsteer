@@ -75,8 +75,14 @@ export class Words {
   spawn(t, urgent = false) {
     if (!this.pool.length) return;
     if (!urgent && this.float.length >= WORDS.floats) return;
-    const i = this.fresh.length ? this.fresh.shift() : Math.floor(Math.random() * this.pool.length);
-    const item = this.pool[Math.min(i, this.pool.length - 1)];
+    let item;
+    if (this.fresh.length) {
+      item = this.pool[Math.min(this.fresh.shift(), this.pool.length - 1)];
+    } else {
+      // 지금 떠 있는 문장은 고르지 않는다. 모인 문장이 적을 때 같은 말이 겹쳐 보이지 않게.
+      const rest = this.pool.filter((w) => !this.float.some((f) => f.text === w.text));
+      item = rest[Math.floor(Math.random() * rest.length)];
+    }
     if (!item) return;
     // 올라오는 길(lane)을 고른다. 바로 앞 문장과 같은 길은 피해서 나란히 서지 않게 한다
     let lane = Math.floor(Math.random() * WORDS.lanes);
