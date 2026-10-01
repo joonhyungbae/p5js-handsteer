@@ -136,10 +136,11 @@ $("file").addEventListener("change", (e) => {
 
 let sending = false;
 let lastSent = 0;
+let sendOff = false;      // 받는 서버가 없으면 한 번 해 보고 그만둔다
 let sendNote = "";
 
 async function send(values) {
-  if (!p.sendHz || sending) return;
+  if (sendOff || !p.sendHz || sending) return;
   const now = performance.now();
   if (now - lastSent < 1000 / p.sendHz) return;
   lastSent = now;
@@ -150,9 +151,12 @@ async function send(values) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ ...values, t: Date.now() }),
     });
-    sendNote = res.ok ? "" : "보내지 못했습니다";
+    if (!res.ok) throw new Error(res.status);
+    sendNote = "";
   } catch {
-    sendNote = "서버가 없어 보내지 않습니다 (Pages 로 열었을 때는 정상입니다)";
+    // 설치 없이 보는 주소(GitHub Pages)로 열었을 때가 대부분이다. 그림과 소리는 그대로 난다.
+    sendOff = true;
+    sendNote = "값 내보내기 꺼짐 (./start.sh 로 열면 OSC·JSON 으로 나갑니다)";
   } finally {
     sending = false;
   }
