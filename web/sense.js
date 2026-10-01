@@ -195,13 +195,13 @@ export class SimSense {
     const swing = Math.sin(t * 2.1 + k) * 0.02;
 
     const pts = new Array(33).fill(null).map(() => P(0, 0.3));
-    pts[0] = P(0, 0.08);                                            // 코
-    pts[11] = P(-0.09, 0.2); pts[12] = P(0.09, 0.2);                // 어깨
+    pts[0] = P(0, 0.07);                                            // 코
+    pts[11] = P(-0.085, 0.22); pts[12] = P(0.085, 0.22);            // 어깨
     pts[13] = P(-aL.out, aL.elbow); pts[14] = P(aR.out, aR.elbow);  // 팔꿈치
     pts[15] = P(-aL.out - 0.1, aL.wrist); pts[16] = P(aR.out + 0.1, aR.wrist); // 손목
-    pts[23] = P(-0.06, 0.5); pts[24] = P(0.06, 0.5);                // 엉덩이
-    pts[25] = P(-0.07 + swing, 0.68); pts[26] = P(0.07 - swing, 0.68);
-    pts[27] = P(-0.08, 0.86); pts[28] = P(0.08, 0.86);
+    pts[23] = P(-0.052, 0.52); pts[24] = P(0.052, 0.52);            // 엉덩이
+    pts[25] = P(-0.055 + swing, 0.7); pts[26] = P(0.055 - swing, 0.7);
+    pts[27] = P(-0.06, 0.88); pts[28] = P(0.06, 0.88);
     return { pts, s, sh: 0.14 };
   }
 
@@ -238,10 +238,11 @@ export class SimSense {
       const mid = (X(pts[23]) + X(pts[24])) / 2;
       c.fillStyle = "rgba(0,0,0,0.35)";
       c.beginPath();
-      c.ellipse(mid, feet + 2 * s, 13 * s, 3 * s, 0, 0, Math.PI * 2);
+      c.ellipse(mid, feet + 2 * s, 10 * s, 2.4 * s, 0, 0, Math.PI * 2);
       c.fill();
 
-      const limb = (a, b, w) => {
+      const limb = (a, b, w, cap = "round") => {
+        c.lineCap = cap;
         c.lineWidth = w * s;
         c.beginPath();
         c.moveTo(X(pts[a]), Y(pts[a]));
@@ -249,38 +250,52 @@ export class SimSense {
         c.stroke();
       };
 
-      // 몸통. 테두리 없이 부드러운 덩어리로 둔다.
-      c.fillStyle = "rgba(190,214,210,0.92)";
-      c.strokeStyle = "rgba(190,214,210,0.92)";
+      // 몸통. 어깨에서 허리로 좁아지는 덩어리. 위가 밝고 아래가 어두워 둥글어 보인다.
+      const body = c.createLinearGradient(0, Y(pts[11]) - 6 * s, 0, Y(pts[23]) + 4 * s);
+      body.addColorStop(0, "rgba(214,232,228,0.96)");
+      body.addColorStop(1, "rgba(158,186,182,0.94)");
+      c.fillStyle = body;
+      c.strokeStyle = body;
+      c.lineJoin = "round";
+      c.lineCap = "round";
       c.beginPath();
       c.moveTo(X(pts[11]), Y(pts[11]));
       c.lineTo(X(pts[12]), Y(pts[12]));
       c.lineTo(X(pts[24]), Y(pts[24]));
       c.lineTo(X(pts[23]), Y(pts[23]));
       c.closePath();
-      c.lineWidth = 7 * s;
+      c.lineWidth = 4.5 * s;
       c.fill();
       c.stroke();
 
-      // 머리
+      // 목과 머리
+      const neckX = (X(pts[11]) + X(pts[12])) / 2;
+      const neckY = (Y(pts[11]) + Y(pts[12])) / 2;
+      c.lineWidth = 3.4 * s;
       c.beginPath();
-      c.arc(X(pts[0]), Y(pts[0]), 6 * s, 0, Math.PI * 2);
+      c.moveTo(neckX, neckY);
+      c.lineTo(X(pts[0]), Y(pts[0]) + 3 * s);
+      c.stroke();
+      c.fillStyle = "rgba(220,238,234,0.96)";
+      c.beginPath();
+      c.arc(X(pts[0]), Y(pts[0]), 6.2 * s, 0, Math.PI * 2);
       c.fill();
 
-      // 다리는 굵게, 팔은 가늘게
-      for (const [a, b] of [[23, 25], [25, 27], [24, 26], [26, 28]]) limb(a, b, 7);
-      c.strokeStyle = "rgba(205,226,222,0.95)";
-      for (const [a, b] of [[11, 13], [13, 15], [12, 14], [14, 16]]) limb(a, b, 5);
+      // 다리는 조금 굵게, 팔은 가늘게
+      c.strokeStyle = "rgba(176,202,198,0.95)";
+      for (const [a, b] of [[23, 25], [25, 27], [24, 26], [26, 28]]) limb(a, b, 4.6);
+      c.strokeStyle = "rgba(208,230,226,0.95)";
+      for (const [a, b] of [[11, 13], [13, 15], [12, 14], [14, 16]]) limb(a, b, 3.6);
 
       // 손목. 이 예제가 보는 자리라 따로 표시한다.
       for (const i of [15, 16]) {
-        c.fillStyle = "rgba(255,210,122,0.95)";
+        c.fillStyle = "rgba(255,206,110,0.18)";
         c.beginPath();
-        c.arc(X(pts[i]), Y(pts[i]), 3.4 * s, 0, Math.PI * 2);
+        c.arc(X(pts[i]), Y(pts[i]), 7.5 * s, 0, Math.PI * 2);
         c.fill();
-        c.fillStyle = "rgba(255,210,122,0.25)";
+        c.fillStyle = "rgba(255,212,128,0.98)";
         c.beginPath();
-        c.arc(X(pts[i]), Y(pts[i]), 6.5 * s, 0, Math.PI * 2);
+        c.arc(X(pts[i]), Y(pts[i]), 3 * s, 0, Math.PI * 2);
         c.fill();
       }
 
