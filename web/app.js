@@ -259,7 +259,7 @@ function drawPreview(frame) {
   const W = prev.width, H = prev.height;
   pctx.save();
   if (p.mirror) { pctx.translate(W, 0); pctx.scale(-1, 1); }
-  pctx.globalAlpha = 0.6;
+  pctx.globalAlpha = sense instanceof SimSense ? 1 : 0.6;   // 가짜 사람은 또렷하게
   pctx.drawImage(frame.image, 0, 0, W, H);
   pctx.globalAlpha = 1;
   // 쓰는 관절만 그린다. 어깨 둘, 손목 둘, 엉덩이 둘.

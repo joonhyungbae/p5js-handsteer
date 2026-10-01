@@ -161,9 +161,12 @@ export class SimSense {
     this.source = "가짜 사람";
     this.note = "카메라 없이 막대 인형이 움직이는 중";
     this.people = people;
+    // 미리보기에 크게 보이므로 격자(128×96)보다 크게 그린다. 흐려 보이지 않게.
+    this.W = 384;
+    this.H = 288;
     this.canvas = document.createElement("canvas");
-    this.canvas.width = GW;
-    this.canvas.height = GH;
+    this.canvas.width = this.W;
+    this.canvas.height = this.H;
     this.ctx = this.canvas.getContext("2d", { willReadFrequently: true });
     this.fps = 60;
     this.frame = { mask: new Float32Array(GW * GH), poses: [], image: this.canvas };
@@ -205,39 +208,94 @@ export class SimSense {
   read(now) {
     const t = now / 1000;
     const c = this.ctx;
-    c.fillStyle = "#000";
-    c.fillRect(0, 0, GW, GH);
-    c.strokeStyle = c.fillStyle = "#fff";
+
+    // 바탕. 위가 어둡고 아래가 조금 밝은 밤빛. 대시보드 색과 맞춘다.
+    const W = this.W, H = this.H;
+    const sky = c.createLinearGradient(0, 0, 0, H);
+    sky.addColorStop(0, "#0b1214");
+    sky.addColorStop(1, "#15201f");
+    c.fillStyle = sky;
+    c.fillRect(0, 0, W, H);
+
+    // 바닥선 하나. 사람이 떠 있어 보이지 않게 한다.
+    c.strokeStyle = "rgba(120,200,190,0.18)";
+    c.lineWidth = 1;
+    c.beginPath();
+    c.moveTo(0, H * 0.88);
+    c.lineTo(W, H * 0.88);
+    c.stroke();
+
     c.lineCap = c.lineJoin = "round";
     const poses = [];
+
     for (let k = 0; k < this.people; k++) {
-      const { pts, s } = SimSense.figure(t, k);
-      const X = (p) => p.x * GW, Y = (p) => p.y * GH;
-      const line = (a, b, w) => {
+      const { pts, s: scale } = SimSense.figure(t, k);
+      const s = scale * 3;   // 캔버스가 커진 만큼 선도 굵게
+      const X = (p) => p.x * W, Y = (p) => p.y * H;
+
+      // 발밑 그림자
+      const feet = (Y(pts[27]) + Y(pts[28])) / 2;
+      const mid = (X(pts[23]) + X(pts[24])) / 2;
+      c.fillStyle = "rgba(0,0,0,0.35)";
+      c.beginPath();
+      c.ellipse(mid, feet + 2 * s, 13 * s, 3 * s, 0, 0, Math.PI * 2);
+      c.fill();
+
+      const limb = (a, b, w) => {
         c.lineWidth = w * s;
         c.beginPath();
         c.moveTo(X(pts[a]), Y(pts[a]));
         c.lineTo(X(pts[b]), Y(pts[b]));
         c.stroke();
       };
-      // 몸통은 굵게, 팔다리는 가늘게
+
+      // 몸통. 테두리 없이 부드러운 덩어리로 둔다.
+      c.fillStyle = "rgba(190,214,210,0.92)";
+      c.strokeStyle = "rgba(190,214,210,0.92)";
       c.beginPath();
       c.moveTo(X(pts[11]), Y(pts[11]));
       c.lineTo(X(pts[12]), Y(pts[12]));
       c.lineTo(X(pts[24]), Y(pts[24]));
       c.lineTo(X(pts[23]), Y(pts[23]));
       c.closePath();
-      c.lineWidth = 6 * s;
+      c.lineWidth = 7 * s;
       c.fill();
       c.stroke();
+
+      // 머리
       c.beginPath();
-      c.arc(X(pts[0]), Y(pts[0]), 6.5 * s, 0, Math.PI * 2);
+      c.arc(X(pts[0]), Y(pts[0]), 6 * s, 0, Math.PI * 2);
       c.fill();
-      for (const [a, b] of [[11, 13], [13, 15], [12, 14], [14, 16]]) line(a, b, 5);
-      for (const [a, b] of [[23, 25], [25, 27], [24, 26], [26, 28]]) line(a, b, 7);
+
+      // 다리는 굵게, 팔은 가늘게
+      for (const [a, b] of [[23, 25], [25, 27], [24, 26], [26, 28]]) limb(a, b, 7);
+      c.strokeStyle = "rgba(205,226,222,0.95)";
+      for (const [a, b] of [[11, 13], [13, 15], [12, 14], [14, 16]]) limb(a, b, 5);
+
+      // 손목. 이 예제가 보는 자리라 따로 표시한다.
+      for (const i of [15, 16]) {
+        c.fillStyle = "rgba(255,210,122,0.95)";
+        c.beginPath();
+        c.arc(X(pts[i]), Y(pts[i]), 3.4 * s, 0, Math.PI * 2);
+        c.fill();
+        c.fillStyle = "rgba(255,210,122,0.25)";
+        c.beginPath();
+        c.arc(X(pts[i]), Y(pts[i]), 6.5 * s, 0, Math.PI * 2);
+        c.fill();
+      }
+
       poses.push(pts);
     }
-    const px = c.getImageData(0, 0, GW, GH).data;
+
+    // 실루엣 값. 이 예제는 쓰지 않지만 모양을 맞춰 둔다. 큰 그림을 격자 크기로 줄여서 읽는다.
+    if (!this.small) {
+      this.small = document.createElement("canvas");
+      this.small.width = GW;
+      this.small.height = GH;
+      this.smallCtx = this.small.getContext("2d", { willReadFrequently: true });
+    }
+    this.smallCtx.drawImage(this.canvas, 0, 0, GW, GH);
+    const px = this.smallCtx.getImageData(0, 0, GW, GH).data;
     const mask = new Float32Array(GW * GH);
     for (let i = 0; i < mask.length; i++) mask[i] = px[i * 4] / 255;
     this.frame = { mask, poses, image: this.canvas };
