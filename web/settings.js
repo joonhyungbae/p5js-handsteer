@@ -22,8 +22,14 @@ export const PARAMS = [
   { key: "readyAt", label: "준비 신호 높이", min: 0.1, max: 1.2, step: 0.05, value: 0.55 },
   // 조작값을 밖으로 보내는 횟수. 유니티나 터치디자이너가 이 값을 받는다
   { key: "sendHz", label: "내보내는 횟수(초당)", min: 0, max: 60, step: 5, value: 30 },
-  // 미리보기 화면에서 보드가 기우는 각도의 최대치
-  { key: "boardTilt", label: "보드 기울기(도)", min: 5, max: 60, step: 1, value: 35 },
+  // 화면에서 판이 기우는 각도의 최대치
+  { key: "boardTilt", label: "판 기울기(도)", min: 5, max: 60, step: 1, value: 35 },
+  // 판을 얼마나 진하게 보일지. 0 이면 판 없이 셰이더만 남는다
+  { key: "board", label: "판 진하기", min: 0, max: 1, step: 0.05, value: 0.8 },
+  // 물결의 결. 작으면 넓고 굵게, 크면 잘고 거칠게
+  { key: "grain", label: "결의 거칠기", min: 0, max: 1, step: 0.02, value: 0.35 },
+  // 색 치우침. 0 이면 물빛, 1 이면 불빛
+  { key: "warm", label: "색 (물 ↔ 불)", min: 0, max: 1, step: 0.02, value: 0.35 },
   { key: "mirror", label: "좌우 뒤집기", type: "check", value: true },
 ];
 
